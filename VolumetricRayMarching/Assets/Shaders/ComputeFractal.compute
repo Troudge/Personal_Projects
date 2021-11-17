@@ -1,0 +1,110 @@
+﻿// Each #kernel tells which function to compile; you can have many kernels
+#pragma kernel CSMain
+
+// Create a RenderTexture with enableRandomWrite flag and set it
+// with cs.SetTexture
+RWTexture2D<float4> Result;
+
+//Put Variables Here
+float4x4 _CameraToWorld;
+float4x4 _CameraInverse; //Not sure what this does yet
+float3 _LightDirection;
+int _RecursionDepth = 3;
+
+float blackAndWhite;
+float3 colourAMix;
+float3 colourBMix;
+
+float power;
+float darkness;
+
+static const float epsilon = 0.001f;
+static const float maxdist = 100;
+static const int maxsteps = 200;
+//End Variables
+
+//Put Useful Structs Here
+struct Ray
+{
+	float3 origin;
+	float3 direction;
+
+};
+//End Useful Structs
+
+//Put Helper Methods Here
+Ray MakeRay(float3 origin, float3 direction) 
+{
+	Ray ray;
+	ray.origin = origin;
+	ray.direction = direction;
+	return ray;
+}
+
+//TODO: figure out exactly what this does
+Ray CreateCameraRay(float2 uv) {
+	float3 origin = mul(_CameraToWorld, float4(0, 0, 0, 1)).xyz;
+	float3 direction = mul(_CameraInverse, float4(uv, 0, 1)).xyz;
+	direction = mul(_CameraToWorld, float4(direction, 0)).xyz;
+	direction = normalize(direction);
+	return MakeRay(origin, direction);
+}
+//End Helper Methods
+
+//This next method calculates the distace to what we are looking at. whatever shape
+//these equations define is what we will see.
+float MengerDist(int n, float3 pos) 
+{ 
+	float2 d = abs(float2(length(pos.xz), pos.y)) - float2(1, 1);
+	return min(max(d.x, d.y), 0.0) + length(max(d, 0.0));
+}
+float3 FindNormal(float3 pos)
+{
+	float3 normal = float3(
+		MengerDist(_RecursionDepth, float3(pos.x+epsilon,pos.y,pos.z)) - MengerDist(_RecursionDepth, float3(pos.x - epsilon, pos.y, pos.z)),
+		MengerDist(_RecursionDepth, float3(pos.x, pos.y + epsilon, pos.z)) - MengerDist(_RecursionDepth, float3(pos.x, pos.y - epsilon, pos.z)),
+		MengerDist(_RecursionDepth, float3(pos.x, pos.y, pos.z + epsilon)) - MengerDist(_RecursionDepth, float3(pos.x, pos.y, pos.z - epsilon)));
+	return normalize(normal);
+}
+
+[numthreads(8,8,1)]
+void CSMain (uint3 id : SV_DispatchThreadID)
+{
+	//Variables for the size of the result texture
+	uint width,height;
+
+	Result.GetDimensions(width, height);
+
+	float2 uv = id.xy / float2(width, height);
+	
+	// Background gradient
+	float4 background = lerp(float4(51, 3, 20, 1), float4(16, 6, 28, 1), uv.y) / 255.0;
+
+	//This is the raymarching bit
+	Ray ray = CreateCameraRay(uv * 2 - 1);
+	float raydist = 0;
+	int marchstepcount = 0;
+
+	while (raydist < maxdist && marchstepcount < maxsteps)
+	{
+		marchstepcount++;
+		float fractdist = MengerDist(_RecursionDepth, ray.origin);
+
+
+		//The ray is close to a surface
+		if (fractdist <= epsilon)
+		{
+			float3 normal = FindNormal(ray.origin - ray.direction * epsilon * 2);
+			float colourA = saturate(dot(normal * .5 + .5, -_LightDirection));
+			float colourB = saturate(_RecursionDepth / 16.0);
+			float3 colourMix = saturate(colourA * colourAMix + colourB * colourBMix);
+
+			background = float4(colourMix.xyz, 1);
+			break;
+		}
+		ray.origin += ray.direction * fractdist;
+		raydist += fractdist;
+	}
+	float rim = marchstepcount/darkness;
+	Result[id.xy] = lerp(background, 1, blackAndWhite);
+}

@@ -1,0 +1,21 @@
+Base path: 'C:/Program Files/Unity/Hub/Editor/2019.2.4f1/Editor/Data', plugins path 'C:/Program Files/Unity/Hub/Editor/2019.2.4f1/Editor/Data/PlaybackEngines'
+Cmd: initializeCompiler
+Cmd: compileComputeKernel
+  api=4 insize=8513 outsize=19622 ok=1
+Cmd: compileComputeKernel
+  api=4 insize=8298 outsize=15898 ok=1
+Cmd: compileComputeKernel
+  api=4 insize=10111 outsize=17038 ok=1
+Cmd: compileComputeKernel
+  error: 2 plat 4 at DistanceEstimation.compute(135): syntax error: unexpected token 'float3'
+  error: 2 plat 4 at DistanceEstimation.compute(136): undeclared identifier 'q'
+  api=4 insize=10162 outsize=0 ok=0
+Cmd: compileComputeKernel
+  api=4 insize=10164 outsize=18198 ok=1
+Cmd: compileComputeKernel
+  error: 2 plat 4 at DistanceEstimation.compute(142): incorrect number of arguments to numeric-type constructor
+  api=4 insize=10397 outsize=0 ok=0
+Cmd: compileComputeKernel
+  api=4 insize=10901 outsize=24442 ok=1
+Cmd: compileComputeKernel
+  api=4 insize=10813 outsize=35190 ok=1

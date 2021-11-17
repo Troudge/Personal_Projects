@@ -1,0 +1,42 @@
+Base path: 'C:/Program Files/Unity/Hub/Editor/2019.2.4f1/Editor/Data', plugins path 'C:/Program Files/Unity/Hub/Editor/2019.2.4f1/Editor/Data/PlaybackEngines'
+Cmd: initializeCompiler
+Cmd: compileComputeKernel
+  api=4 insize=8297 outsize=24318 ok=1
+Cmd: compileComputeKernel
+  api=4 insize=8306 outsize=24318 ok=1
+Cmd: compileComputeKernel
+  api=4 insize=8513 outsize=19622 ok=1
+Cmd: compileComputeKernel
+  api=4 insize=8513 outsize=19622 ok=1
+Cmd: compileComputeKernel
+  error: 1 plat 4 at DistanceEstimation.compute(101): loop only executes for 1 iteration(s), forcing loop to unroll
+  api=4 insize=8315 outsize=12942 ok=1
+Cmd: compileComputeKernel
+  api=4 insize=8314 outsize=12754 ok=1
+Cmd: compileComputeKernel
+  api=4 insize=8318 outsize=15434 ok=1
+Cmd: compileComputeKernel
+  api=4 insize=8737 outsize=19978 ok=1
+Cmd: compileComputeKernel
+  api=4 insize=9007 outsize=19954 ok=1
+Cmd: compileComputeKernel
+  error: 2 plat 4 at DistanceEstimation.compute(201): 'pydist': no matching 1 parameter function
+  api=4 insize=9730 outsize=0 ok=0
+Cmd: compileComputeKernel
+  error: 2 plat 4 at DistanceEstimation.compute(202): syntax error: unexpected token 'return'
+  api=4 insize=9752 outsize=0 ok=0
+Cmd: compileComputeKernel
+  api=4 insize=10888 outsize=27806 ok=1
+Cmd: compileComputeKernel
+  api=4 insize=10890 outsize=28026 ok=1
+Cmd: compileComputeKernel
+  api=4 insize=10903 outsize=27042 ok=1
+Cmd: compileComputeKernel
+  api=4 insize=10901 outsize=24442 ok=1
+Cmd: compileComputeKernel
+  api=4 insize=10901 outsize=24442 ok=1
+Cmd: compileComputeKernel
+  error: 2 plat 4 at DistanceEstimation.compute(152): syntax error: unexpected integer constant
+  api=4 insize=10617 outsize=0 ok=0
+Cmd: compileComputeKernel
+  api=4 insize=10847 outsize=36334 ok=1

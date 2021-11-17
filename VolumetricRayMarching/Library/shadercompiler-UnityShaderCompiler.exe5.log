@@ -1,0 +1,31 @@
+Base path: 'C:/Program Files/Unity/Hub/Editor/2019.2.4f1/Editor/Data', plugins path 'C:/Program Files/Unity/Hub/Editor/2019.2.4f1/Editor/Data/PlaybackEngines'
+Cmd: initializeCompiler
+Cmd: compileComputeKernel
+  error: 2 plat 4 at DistanceEstimation.compute(110): 'rotateZ': no matching 2 parameter function
+  api=4 insize=8305 outsize=0 ok=0
+Cmd: compileComputeKernel
+  api=4 insize=8306 outsize=24318 ok=1
+Cmd: compileComputeKernel
+  api=4 insize=8302 outsize=24362 ok=1
+Cmd: compileComputeKernel
+  error: 2 plat 4 at DistanceEstimation.compute(125): 'recursiveBoxDist': function must return a value
+  error: 2 plat 4 at DistanceEstimation.compute(125): undeclared identifier 'cross'
+  api=4 insize=8519 outsize=0 ok=0
+Cmd: compileComputeKernel
+  api=4 insize=8294 outsize=19962 ok=1
+Cmd: compileComputeKernel
+  api=4 insize=10165 outsize=18358 ok=1
+Cmd: compileComputeKernel
+  api=4 insize=10892 outsize=28026 ok=1
+Cmd: compileComputeKernel
+  api=4 insize=10901 outsize=24442 ok=1
+Cmd: compileComputeKernel
+  api=4 insize=10804 outsize=26162 ok=1
+Cmd: compileComputeKernel
+  api=4 insize=10845 outsize=36002 ok=1
+Cmd: compileComputeKernel
+  api=4 insize=10847 outsize=36002 ok=1
+Cmd: compileComputeKernel
+  api=4 insize=10849 outsize=36334 ok=1
+Cmd: compileComputeKernel
+  api=4 insize=10845 outsize=35982 ok=1

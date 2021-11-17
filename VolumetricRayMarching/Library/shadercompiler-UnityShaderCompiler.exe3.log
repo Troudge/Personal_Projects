@@ -1,0 +1,37 @@
+Base path: 'C:/Program Files/Unity/Hub/Editor/2019.2.4f1/Editor/Data', plugins path 'C:/Program Files/Unity/Hub/Editor/2019.2.4f1/Editor/Data/PlaybackEngines'
+Cmd: initializeCompiler
+Cmd: compileComputeKernel
+  api=4 insize=8239 outsize=22966 ok=1
+Cmd: compileComputeKernel
+  api=4 insize=8302 outsize=24318 ok=1
+Cmd: compileComputeKernel
+  api=4 insize=8297 outsize=24318 ok=1
+Cmd: compileComputeKernel
+  api=4 insize=8297 outsize=24318 ok=1
+Cmd: compileComputeKernel
+  api=4 insize=8546 outsize=16098 ok=1
+Cmd: compileComputeKernel
+  api=4 insize=8254 outsize=16054 ok=1
+Cmd: compileComputeKernel
+  error: 1 plat 4 at DistanceEstimation.compute(100): loop only executes for 1 iteration(s), forcing loop to unroll
+  api=4 insize=8250 outsize=9730 ok=1
+Cmd: compileComputeKernel
+  error: 1 plat 4 at DistanceEstimation.compute(101): loop only executes for 1 iteration(s), forcing loop to unroll
+  api=4 insize=8298 outsize=13342 ok=1
+Cmd: compileComputeKernel
+  error: 1 plat 4 at DistanceEstimation.compute(101): loop only executes for 1 iteration(s), forcing loop to unroll
+  api=4 insize=8295 outsize=11382 ok=1
+Cmd: compileComputeKernel
+  api=4 insize=10165 outsize=18358 ok=1
+Cmd: compileComputeKernel
+  error: 2 plat 4 at DistanceEstimation.compute(142): incorrect number of arguments to numeric-type constructor
+  error: 2 plat 4 at DistanceEstimation.compute(142): undeclared identifier 'prism2'
+  api=4 insize=10397 outsize=0 ok=0
+Cmd: compileComputeKernel
+  api=4 insize=10883 outsize=27754 ok=1
+Cmd: compileComputeKernel
+  api=4 insize=10886 outsize=25958 ok=1
+Cmd: compileComputeKernel
+  api=4 insize=10622 outsize=21574 ok=1
+Cmd: compileComputeKernel
+  api=4 insize=10843 outsize=35606 ok=1

@@ -1,0 +1,355 @@
+﻿// Each #kernel tells which function to compile; you can have many kernels
+#pragma kernel CSMain
+
+// Create a RenderTexture with enableRandomWrite flag and set it
+// with cs.SetTexture
+RWTexture2D<float4> Result;
+
+float4x4 _CameraToWorld;
+float4x4 _CameraInverseProjection;
+float3 _LightDirection;
+float _Animate;
+int _Iterate;
+float3 _ColorsA;
+float3 _ColorsB;
+
+static const float epsilon = 0.0001f;
+static const float maxDst = 500;
+static const int maxStepCount = 200;
+static const int iterations = 2;
+
+/*
+*A basic struct for a vector
+*/
+struct Ray {
+	float3 origin;
+	float3 direction;
+};
+
+/*
+* Finds the dot product of two vectors
+*/
+float DotProduct(float2 vec1, float2 vec2)
+{
+	return vec1.x * vec2.x - vec1.y * vec2.y;
+}
+
+/*
+*A method for clarity purposes
+*/
+Ray CreateRay(float3 origin, float3 direction) {
+	Ray ray;
+	ray.origin = origin;
+	ray.direction = direction;
+	return ray;
+}
+/*
+*Creates a ray with the cameras world coordinates and direction
+*/
+Ray CreateCameraRay(float2 uv) {
+	float3 origin = mul(_CameraToWorld, float4(0, 0, 0, 1)).xyz;
+	float3 direction = mul(_CameraInverseProjection, float4(uv, 0, 1)).xyz;
+	direction = mul(_CameraToWorld, float4(direction, 0)).xyz;
+	direction = normalize(direction);
+	return CreateRay(origin, direction);
+}
+
+//Rotations for distance equations: https://www.shadertoy.com/view/4tcGDr
+/*
+ * Rotation matrix around the X axis.
+ */
+float3x3 rotateX(float theta) {
+	float c = cos(theta);
+	float s = sin(theta);
+	float3x3 mat = {
+		1, 0, 0,
+		0, c, -s,
+		0, s, c
+	};
+	return mat;
+}
+
+/*
+ * Rotation matrix around the Y axis.
+ */
+float3x3 rotateY(float theta) {
+	float c = cos(theta);
+	float s = sin(theta);
+	return float3x3(
+		float3(c, 0, s),
+		float3(0, 1, 0),
+		float3(-s, 0, c)
+	);
+}
+
+/*
+ * Rotation matrix around the Z axis.
+ */
+float3x3 rotateZ(float theta) {
+	float c = cos(theta);
+	float s = sin(theta);
+	return float3x3(
+		float3(c, -s, 0),
+		float3(s, c, 0),
+		float3(0, 0, 1)
+	);
+}
+/*
+*Finds the distance to a box
+*/
+float boxdist(float3 pos, float3 boxsize) 
+{
+	float3 box = abs(pos) - boxsize;
+	return length(max(box, 0.0)) + min(max(box.x, max(box.y, box.z)), 0.0);
+}
+
+/*
+*Finds the Distance to a pyramid
+*/
+float pydist(float3 pos, float height) 
+{
+	pos = float3(pos.x - 1, pos.y - 1, pos.z - 1);
+	float m2 = height * height + 0.25;
+
+	pos.xz = abs(pos.xz);
+	pos.xz = (pos.z > pos.x) ? pos.zx : pos.xz;
+	pos.xz -= 0.5;
+
+	float3 q = float3(pos.z, height * pos.y - 0.5 * pos.x, height * pos.x + 0.5 * pos.y);
+
+	float s = max(-q.x, 0.0);
+	float t = clamp((q.y - 0.5 * pos.z) / (m2 + 0.25), 0.0, 1.0);
+
+	float a = m2 * (q.x + s) * (q.x + s) + q.y * q.y;
+	float b = m2 * (q.x + 0.5 * t) * (q.x + 0.5 * t) + (q.y - m2 * t) * (q.y - m2 * t);
+
+	float d2 = min(q.y, -q.x * m2 - q.y * 0.5) > 0.0 ? 0.0 : min(a, b);
+
+	return sqrt((d2 + q.z * q.z) / m2) * sign(max(q.z, -pos.y));
+}
+
+float triprismdist(float3 pos, float2 height) 
+{
+	pos = float3(pos.x - 1, pos.y - 1.33, pos.z - 1);
+	pos = mul(rotateZ(radians(180)), float3x1(pos));
+	float3 q = abs(pos);
+	return max(q.z - height.y, max(q.x * 0.866025 + pos.y * 0.5, -pos.y) - height.x * 0.5);
+}
+
+float prismcrossdist(float3 pos, float2 height) 
+{
+	float prism1 = triprismdist(pos, height);
+	pos = mul(rotateY(radians(90)), float3x1(pos));
+	float prism2 = triprismdist(pos, height);
+	return min(prism1, prism2);
+}
+
+float4 serpinskidist(float3 pos)
+{
+	float tri = pydist(pos, 1);
+	float4 result = float4(tri, 1, 1, 1);
+	float cross = prismcrossdist(pos, float2(0.30, 10));
+	float scale = 1;
+	for (int i = 0; i < _Iterate; i++)
+	{
+		float3 newpos = fmod(pos/scale, 2);
+		float3 resize = abs(3-newpos);
+		cross = min(cross, prismcrossdist(resize, float2(0.30/scale, 10)));
+		scale *= 3;
+	}
+	result = float4(min(tri, cross),1, 1, 1);
+	return result;
+}
+
+//https://www.iquilezles.org/www/articles/menger/menger.htm source
+/*
+*Finds the distance to a menger sponge like structure by recursivly 
+*subtracting crosses from a box
+*/
+float4 recursiveBoxDist(float3 pos)
+{
+	float3 boxpos = float3(pos.x-1, pos.y-1, pos.z-1);
+	boxpos = mul(rotateY(radians(_Animate)), float3x1(boxpos));
+	float box = boxdist(boxpos, float3(1.0, 1.0, 1.0));
+
+	//The color of iterations return float4
+	float4 result = float4(box, 1.0, 1.0, 1.0);
+
+	float cross = 1.0;
+	float size = 1;
+	float rot = 0;
+	for (int i = 0; i < _Iterate; i++) 
+	{
+		float3 newpos = fmod(pos*size, 2)-1 ;
+		 //newpos = mul(rotateZ(radians(rot)), float3x1(newpos));
+		 //newpos = mul(rotateX(radians(_Animate)), float3x1(newpos));
+		size *= 3;
+		rot += 30;
+		float3 r = abs(1.0 - 3.0 * abs(newpos));
+		r = mul(rotateZ(radians(_Animate)), float3x1(r));
+		//r = mul(rotateY(radians(rot)), float3x1(r));
+		float crossA = max(r.x, r.y);
+		float crossB = max(r.y, r.z);
+		float crossC = max(r.z, r.x);
+	    cross = (min(crossA, min(crossB, crossC)) - 1.0) / size;
+		if (cross > box)
+		{
+			box = cross;
+			result = float4(box, 0.2 * crossA * crossB * crossC, 1.0 + float(i) / 4, 0.0);
+		}
+		//box = max(box, -cross);
+	}
+	return result;
+}
+
+//Distance Estimation fuction below
+//https://iquilezles.org/www/articles/distfunctions/distfunctions.htm
+//!!Change this for a different scene!!
+float4 EstimateDist(float3 pos)
+{
+	//float smoothness = 1.5;
+	//float3 normalPlane = float3(0, -0.7, 0);
+	//float2 width = float2(10.0, 1.1);
+	//float3 newpos = float3(pos.x, pos.y, pos.z);
+	////This is supposed to do the same thing as rotpos but for some reason is busted ???
+	////float3 rotpos = mul(rotateX(radians(90.0+_Animate)),float3x1(newpos));
+	//float3 rotpos = float3(newpos.x, newpos.z * -sin(90+_Animate) + newpos.y * cos(90 + _Animate), newpos.z * cos(90 + _Animate) + newpos.y * sin(90 + _Animate));
+	//float3 rotpos2 = float3(newpos.x, newpos.z * -sin(-90 - _Animate) + newpos.y * cos(-90 - _Animate), newpos.z * cos(-90 - _Animate) + newpos.y * sin(-90 - _Animate));
+	//
+	//float torusA = length(float2(length(rotpos2.xz) - width.x, rotpos2.y)) - width.y;
+	//
+	//float torusB = length(float2(length(rotpos.xz) - width.x, rotpos.y)) - width.y;
+
+	//float h = max(smoothness - abs(torusA - torusB), 0.0);
+	////Triangular prism
+	//float3 q = abs(pos);
+	//float2 stuff = float2(8, 8);
+	//float3 prismpos = mul((rotateX(radians(90.0) + _Animate)), float3x1(pos));
+	//float prism = max(q.z - stuff.y, max(q.x * 0.866025 + pos.y * 0.5, -pos.y) - stuff.x * 0.5);
+	//float prismSmooth = max(smoothness - abs(prism - min(abs(torusA), abs(torusB)) - h * h * 0.25 / smoothness), 0.0);
+	//return min(min(abs(torusA),abs(torusB)) - h * h * 0.25 / smoothness,prism)-prismSmooth*prismSmooth*0.25/smoothness;
+
+
+	//Menger Sponge
+	float4 res = recursiveBoxDist(pos);
+	//float4 res = float4(serpinskidist(pos));
+	//float4 res = float4(pydist(pos, 1), 1, 1, 1);
+	//res.x = max(res.x, -prismcrossdist(pos, float2(0.25, 10)));
+	res.x = lerp(res.x, pydist(pos, 1), _Animate);
+	return res;
+
+}
+
+
+float calcSoftshadow(in float3 ro, in float3 rd, in float mint, in float tmax)
+{
+	// bounding volume
+	float tp = (0.8 - ro.y) / rd.y; if (tp > 0.0) tmax = min(tmax, tp);
+
+	float res = 10.0;
+	float t = mint;
+	for (int i = 0; i < 16; i++)
+	{
+		float h = EstimateDist(ro + rd * t).x;
+		float s = clamp(8.0 * h / t, 0.0, 1.0);
+		res = min(res, s * s * (3.0 - 2.0 * s));
+		t += clamp(h, 0.02, 0.10);
+		if (res<0.005 || t>tmax) break;
+	}
+	return clamp(res, 0.0, 1.0);
+}
+
+float calcAO(in float3 pos, in float3 normal)
+{
+	float occlusion = 0.0;
+	float scale = 1.0;
+	for (int i = 0; i < 5; i++)
+	{
+		float h = 0.01 + 0.12 * float(i) / 4.0;
+		float d = EstimateDist(pos + h * normal).x;
+		occlusion += (h - d) * scale;
+		scale *= 0.95;
+		if (occlusion > 0.35) break;
+	}
+	return clamp(1.0 - 3.0 * occlusion, 0.0, 1.0) * (0.5 + 0.5 * normal.y);
+}
+
+//find normals by getting the distance estimate at various points close to the surface
+float3 EstimateNormal(float3 p) 
+{
+	float x = EstimateDist(float3(p.x + epsilon, p.y, p.z)).x - EstimateDist(float3(p.x - epsilon, p.y, p.z)).x;
+	float y = EstimateDist(float3(p.x, p.y + epsilon, p.z)).x - EstimateDist(float3(p.x, p.y - epsilon, p.z)).x;
+	float z = EstimateDist(float3(p.x, p.y, p.z + epsilon)).x - EstimateDist(float3(p.x, p.y, p.z - epsilon)).x;
+	return normalize(float3(x, y, z));
+}
+
+
+[numthreads(8,8,1)]
+void CSMain (uint3 id : SV_DispatchThreadID)
+{
+	uint width, height;
+	Result.GetDimensions(width, height);
+
+	float2 uv = id.xy / float2(width, height);
+
+	// Raymarching:
+	Ray ray = CreateCameraRay(uv *2 -1);
+	float rayDst = 0;
+	int marchSteps = 0;
+	float4 result = float4(0.1,0.5,0.8,1);
+	while (rayDst < maxDst && marchSteps < maxStepCount) {
+		marchSteps++;
+		float dst = EstimateDist(ray.origin).x;
+		float3 distcolor = EstimateDist(ray.origin).yzw;
+		// Ray has hit a surface
+		if (dst <= epsilon) {
+			float3 normal = EstimateNormal(ray.origin - ray.direction * epsilon * 2);
+			float3 ref = reflect(ray.direction, normal);
+
+			float colorA = saturate(dot(normal * .5 + .5, -_LightDirection));
+			float colorB = saturate(distcolor.y*distcolor.x);
+			float3 colorMix = saturate(colorA *_ColorsA + colorB * _ColorsB);
+
+			result = float4(colorMix.xyz, 1);
+
+			//Lighting stuff
+			float3 lin = float3(0.0, 0.0, 0.0);
+			float occlusion = calcAO(ray.origin, normal);
+			float3 col = 0.2 + 0.2 * sin(EstimateDist(ray.origin).x * 2.0 + float3(0.0, 1.0, 2.0));
+
+			float3  lig = normalize(float3(-0.5, 0.4, -0.6));
+			float3  hal = normalize(lig - ray.direction);
+			float dif = clamp(dot(normal, lig), 0.0, 1.0);
+			dif *= calcSoftshadow(ray.origin, lig, 0.02, 2.5);
+			float spe = pow(clamp(dot(normal, hal), 0.0, 1.0), 16.0);
+			spe *= dif;
+			spe *= 0.04 + 0.96 * pow(clamp(1.0 - dot(hal, lig), 0.0, 1.0), 5.0);
+			lin += col * 2.20 * dif * float3(1.30, 1.00, 0.70);
+			lin += 5.00 * spe * float3(1.30, 1.00, 0.70);
+
+
+			dif = sqrt(clamp(0.5 + 0.5 * normal.y, 0.0, 1.0));
+			dif *= occlusion;
+			spe = smoothstep(-0.2, 0.2, ref.y);
+			spe *= dif;
+			spe *= calcSoftshadow(ray.origin, ref, 0.02, 2.5);
+			spe *= 0.04 + 0.96 * pow(clamp(1.0 + dot(normal, ray.direction), 0.0, 1.0), 5.0);
+			lin += col * 0.60 * dif * float3(0.40, 0.60, 1.15);
+			lin += 2.00 * spe * float3(0.40, 0.60, 1.30);
+
+		    dif = clamp(dot(normal, normalize(float3(0.5, 0.0, 0.6))), 0.0, 1.0) * clamp(1.0 - ray.origin.y, 0.0, 1.0);
+			dif *= occlusion;
+			lin += col * 0.55 * dif * float3(0.25, 0.25, 0.25);
+
+		    dif = pow(clamp(1.0 + dot(normal, ray.direction), 0.0, 1.0), 2.0);
+			dif *= occlusion;
+			lin += col * 0.25 * dif * float3(1.00, 1.00, 1.00);
+
+			result += float4(clamp(lin, 0.0, 1.0),0);
+			break;
+		}
+		ray.origin += ray.direction * dst;
+		rayDst += dst;
+	}
+	Result[id.xy] = result;
+}
